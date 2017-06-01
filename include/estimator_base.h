@@ -11,7 +11,7 @@
 
 #include <ros/ros.h>
 #include <rosflight_msgs/State.h>
-#include <rosflight_msgs/GPS.h>
+#include <inertial_sense/GPS.h>
 #include <sensor_msgs/Imu.h>
 #include <rosflight_msgs/Barometer.h>
 #include <rosflight_msgs/Airspeed.h>
@@ -92,7 +92,7 @@ private:
     ros::Subscriber airspeed_sub_;
 
     void update(const ros::TimerEvent &);
-    void gpsCallback(const rosflight_msgs::GPS &msg);
+    void gpsCallback(const inertial_sense::GPS &msg);
     void imuCallback(const sensor_msgs::Imu &msg);
     void baroAltCallback(const rosflight_msgs::Barometer &msg);
     void airspeedCallback(const rosflight_msgs::Airspeed &msg);

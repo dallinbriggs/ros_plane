@@ -74,9 +74,9 @@ void estimator_base::update(const ros::TimerEvent&)
 	}
 }
 
-void estimator_base::gpsCallback(const rosflight_msgs::GPS &msg)
+void estimator_base::gpsCallback(const inertial_sense::GPS &msg)
 {
-    if(msg.fix != true || msg.NumSat < 4 || !std::isfinite(msg.latitude))
+    if((msg.fix_type & inertial_sense::GPS::GPS_STATUS_FIX_TYPE_3D_FIX) != inertial_sense::GPS::GPS_STATUS_FIX_TYPE_3D_FIX || msg.num_sat < 4 || !std::isfinite(msg.latitude))
     {
         input_.gps_new = false;
         return;
@@ -93,9 +93,9 @@ void estimator_base::gpsCallback(const rosflight_msgs::GPS &msg)
         input_.gps_n = EARTH_RADIUS*(msg.latitude - init_lat_)*M_PI/180.0;
         input_.gps_e = EARTH_RADIUS*cos(init_lat_*M_PI/180.0)*(msg.longitude - init_lon_)*M_PI/180.0;
         input_.gps_h = msg.altitude - init_alt_;
-        input_.gps_Vg = msg.speed;
-        if(msg.speed > 0.3)
-            input_.gps_course = msg.ground_course;
+        input_.gps_Vg = msg.ground_speed_2d;
+        if(msg.ground_speed_2d > 0.3)
+            input_.gps_course = msg.course;
         input_.gps_new = true;
 
        std_msgs::Float32MultiArray msg;
