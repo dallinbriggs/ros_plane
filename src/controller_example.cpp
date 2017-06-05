@@ -128,7 +128,7 @@ void controller_example::control(const params_s &params, const input_s &input, o
     output.current_zone = current_zone;
     output.delta_e = pitch_hold(output.theta_c, input.theta, input.q, params, input.Ts);
     if((input.h < 4.0) && (current_zone == alt_zones::TakeOff)) {
-        	output.delta_e = 0.1;
+        	output.delta_e = 0.15;
         }
 }
 
