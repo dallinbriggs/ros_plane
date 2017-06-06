@@ -4,7 +4,7 @@
 # need to make polymorphism
 
 import rospy
-from rosflight_msgs.msg import State
+from rosflight_msgs.msg import State, AuxCommand
 from ros_plane.msg import Waypoint, Current_Path, Dubin
 from sensor_msgs.msg import Imu, FluidPressure
 from std_msgs.msg import Float32, Float32MultiArray, Bool
@@ -49,12 +49,14 @@ class path_manager_base:
 		self._vehicle_state_sub = rospy.Subscriber('state', State, self.vehicle_state_callback)
 		self._new_waypoint_sub = rospy.Subscriber('waypoint_path', Waypoint, self.new_waypoint_callback)
 		self._RTH_sub = rospy.Subscriber('RTH', Bool, self.RTH_callback)
+		self._bomb_sub = rospy.Subscriber('bomb_drop', Bool, self.drop_callback)
 
 		# Init Publishers
 		self._current_path_pub = rospy.Publisher('current_path', Current_Path, queue_size=10)
 		self._current_wp_pub = rospy.Publisher('current_waypoint', Waypoint, queue_size=10)
 		self._current_dub_pub = rospy.Publisher('dubin_params', Dubin, queue_size=10)
 		self._wp_error_pub = rospy.Publisher('waypoint_error', Float32, queue_size=1)
+		self._aux_cmd_pub = rospy.Publisher('aux_command', AuxCommand, queue_size=1)
 
 		self.index_a = 1 #waypoint 0 should be initial position, waypoint 1 where you want to start flying to
 
@@ -73,6 +75,8 @@ class path_manager_base:
 
 		self._waypoints = []
 		self.RTH = False # RETURN TO HOME COMMAND
+
+		self.drop_safe = False
 
 		# run waypoint init to initialize with waypoints found in waypoint_init (alternative to path_planner.py)
 		# self.waypoint_init()
@@ -130,6 +134,23 @@ class path_manager_base:
 
 
 	# Class Member Functions
+	def drop_bottle(self):
+		aux_cmd = AuxCommand()
+		aux_cmd.type_array = [0, 0, 0, 0, 0, 0, 1, 0]
+		aux_cmd.values = [0, 0, 0, 0, 0, 0, 1, 0]
+		self._aux_cmd_pub.publish(aux_cmd)
+
+		rospy.sleep(0.5)
+		aux_cmd.type_array = [0, 0, 0, 0, 0, 0, 1, 0]
+		aux_cmd.values = [0, 0, 0, 0, 0, 0, -1, 0]
+		self._aux_cmd_pub.publish(aux_cmd)
+		rospy.logwarn("Bottle Dropped")
+
+	def drop_callback(self, msg):
+		self.drop_safe = msg.data
+		if self.drop_safe == True:
+			rospy.logwarn("Ready to Drop")
+
 	def RTH_callback(self, msg):
 		self.RTH = msg.data
 		if self.RTH:
@@ -705,6 +726,10 @@ class path_manager_base:
 			error = sqrt((p[0]-w_i[0])**2 + (p[1]-w_i[1])**2 + (p[2]-w_i[2])**2)
 			self._wp_error_pub.publish(error)
 			self.start_up = False
+
+			if (b.drop == True) and (self.drop_safe == True):
+				self.drop_bottle()
+				rospy.logwarn("Bottle Dropping")
 
 			if (self.index_a == (self._num_waypoints - 1)):
 				self.index_a = 0
