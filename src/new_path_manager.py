@@ -166,6 +166,7 @@ class path_manager_base:
 			self._waypoints[self._num_waypoints].chi_valid = True
 			self._waypoints[self._num_waypoints].Va_d      = self._vehicle_state.Va
 			self._waypoints[self._num_waypoints].land	   = False
+			self._waypoints[self._num_waypoints].drop	   = False
 			self._num_waypoints+=1
 
 			new_wp = self.waypoint_temp()
@@ -177,6 +178,7 @@ class path_manager_base:
 			self._waypoints[self._num_waypoints].chi_valid = msg.chi_valid
 			self._waypoints[self._num_waypoints].Va_d      = msg.Va_d
 			self._waypoints[self._num_waypoints].land	   = msg.land
+			self._waypoints[self._num_waypoints].drop	   = msg.drop
 			self._num_waypoints+=1
 
 		# add new waypoint to self._waypoint array or waypoints
@@ -190,6 +192,7 @@ class path_manager_base:
 			self._waypoints[self._num_waypoints].chi_valid = msg.chi_valid
 			self._waypoints[self._num_waypoints].Va_d      = msg.Va_d
 			self._waypoints[self._num_waypoints].land	   = msg.land
+			self._waypoints[self._num_waypoints].drop	   = msg.drop
 			self._num_waypoints+=1
 			print "Number of Waypoints: ", self._num_waypoints
 		elif msg.set_current:
@@ -203,6 +206,7 @@ class path_manager_base:
 			new_wp.chi_valid = True
 			new_wp.Va_d = self._vehicle_state.Va
 			new_wp.land = False
+			new_wp.drop = False
 			self._num_waypoints+=1
 			self._waypoints.insert(self.index_a-1, new_wp)
 
@@ -214,6 +218,7 @@ class path_manager_base:
 			new_wp.chi_valid = msg.chi_valid
 			new_wp.Va_d = msg.Va_d
 			new_wp.land = msg.land
+			new_wp.drop = msg.drop
 			self._num_waypoints+=1
 			self._waypoints.insert(self.index_a, new_wp)
 
