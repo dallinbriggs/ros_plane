@@ -9,15 +9,15 @@
 -->
 <!-- <rosparam command="load" file="$(find fcu_io)/param/rc.yaml"/>-->
  
- <node name="naze"  pkg="fcu_io"  type="fcu_io_node" output="screen">
+ <node name="naze"  pkg="rosflight"  type="rosflight_io" output="screen">
         <param name="port" value="/dev/naze"/>
-	<remap from="/extended_command" to="/command"/>
+	<!-- <remap from="/extended_command" to="/command"/> -->
  </node>
  
 
  <node name="estimator" pkg="ros_plane" type="ros_plane_estimator" output="screen">
- 	<remap from="/baro/data" to="/baro"/>
-	<remap from="/airspeed/data" to="/airspeed"/>
+ 	<!--<remap from="/baro/data" to="/baro"/>
+	<remap from="/airspeed/data" to="/airspeed"/>-->
  </node>
  
  <rosparam command="load" file="$(find ros_plane)/param/MTD.yaml" ns="controller"/>
@@ -38,7 +38,7 @@
  <node name="record" pkg="rosbag" type="record" args="--all -o $(arg name)" output="screen"/>
  <!-- GPS -->
 
- <node name="gps_driver" pkg="fcu_common" type="gps">
+ <node name="gps_driver" pkg="rosflight_utils" type="gps">
 	<param name="port" value="/dev/m8"/>
 	<param name="baud" value="115200"/>
  </node>
