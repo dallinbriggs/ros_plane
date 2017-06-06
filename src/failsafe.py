@@ -27,6 +27,7 @@ def RTHNOW_callback(msg):
     RTHNOW = msg.data
 
 def TERMINATENOW_callback(msg):
+	print "TERMINATENOW callback"
 	TERMINATENOW = msg.data
 
 new_failsafe = True
@@ -51,8 +52,10 @@ r = rospy.Rate(10) # 10hz
 while not rospy.is_shutdown():
 	if RTHNOW:
 		RTH.data = True
+		print"RTH NOW
 	if TERMINATENOW:
 		Terminate.data = True
+		print"TERMINATE NOW
 	RTH_pub.publish(RTH)
 	Terminate_pub.publish(Terminate)
 	r.sleep()
