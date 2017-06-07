@@ -50,6 +50,7 @@ class path_manager_base:
 		self._new_waypoint_sub = rospy.Subscriber('waypoint_path', Waypoint, self.new_waypoint_callback)
 		self._RTH_sub = rospy.Subscriber('RTH', Bool, self.RTH_callback)
 		self._bomb_sub = rospy.Subscriber('bomb_drop', Bool, self.drop_callback)
+		self._bomb_now_sub = rospy.Subscriber('DROP_now', Bool, self.DROPnow_callback)
 
 		# Init Publishers
 		self._current_path_pub = rospy.Publisher('current_path', Current_Path, queue_size=10)
@@ -145,6 +146,10 @@ class path_manager_base:
 		aux_cmd.values = [0, 0, 0, 0, 0, 0, -1, 0]
 		self._aux_cmd_pub.publish(aux_cmd)
 		rospy.logwarn("Bottle Dropped")
+
+	def DROPnow_callback(self, msg):
+		if msg.data == True:
+			self.drop_bottle()
 
 	def drop_callback(self, msg):
 		self.drop_safe = msg.data
