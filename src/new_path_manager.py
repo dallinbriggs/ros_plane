@@ -141,10 +141,11 @@ class path_manager_base:
 		aux_cmd.values = [0, 0, 0, 0, 0, 0, 1, 0]
 		self._aux_cmd_pub.publish(aux_cmd)
 
-		rospy.sleep(0.5)
-		aux_cmd.type_array = [0, 0, 0, 0, 0, 0, 1, 0]
-		aux_cmd.values = [0, 0, 0, 0, 0, 0, -1, 0]
-		self._aux_cmd_pub.publish(aux_cmd)
+		# # This is to close the bomb drop again
+		# rospy.sleep(0.5)
+		# aux_cmd.type_array = [0, 0, 0, 0, 0, 0, 1, 0]
+		# aux_cmd.values = [0, 0, 0, 0, 0, 0, -1, 0]
+		# self._aux_cmd_pub.publish(aux_cmd)
 		rospy.logwarn("Bottle Dropped")
 
 	def DROPnow_callback(self, msg):
