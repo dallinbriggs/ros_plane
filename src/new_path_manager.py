@@ -79,6 +79,8 @@ class path_manager_base:
 
 		self.drop_safe = False
 
+		self.returning_home = True
+
 		# run waypoint init to initialize with waypoints found in waypoint_init (alternative to path_planner.py)
 		# self.waypoint_init()
 
@@ -158,9 +160,38 @@ class path_manager_base:
 			rospy.logwarn("Ready to Drop")
 
 	def RTH_callback(self, msg):
-		self.RTH = msg.data
+		# self.RTH = msg.data
 		if self.RTH:
 			rospy.logwarn("RETURN TO HOME!!!!!!!!!!")
+			self.state = 1
+			self.index_a += 1
+			self.return_to_home()
+
+	def return_to_home(self):
+		new_wp = self.waypoint_temp()
+		self._waypoints.append(new_wp)
+		self._waypoints[self._num_waypoints].w0      = self._vehicle_state.position[0]
+		self._waypoints[self._num_waypoints].w1      = self._vehicle_state.position[1]
+		self._waypoints[self._num_waypoints].w2      = self._vehicle_state.position[2]
+		self._waypoints[self._num_waypoints].chi_d     = self._vehicle_state.chi
+		self._waypoints[self._num_waypoints].chi_valid = True
+		self._waypoints[self._num_waypoints].Va_d      = self._vehicle_state.Va
+		self._waypoints[self._num_waypoints].land	   = False
+		self._waypoints[self._num_waypoints].drop	   = False
+		self._num_waypoints+=1
+
+		new_wp = self.waypoint_temp()
+		self._waypoints.append(new_wp)
+		self._waypoints[self._num_waypoints].w0      	= 0.0
+		self._waypoints[self._num_waypoints].w1      	= 0.0
+		self._waypoints[self._num_waypoints].w2      	= -60
+		self._waypoints[self._num_waypoints].chi_d     	= 0.0
+		self._waypoints[self._num_waypoints].chi_valid 	= True
+		self._waypoints[self._num_waypoints].Va_d      	= 15.0
+		self._waypoints[self._num_waypoints].land	   	= False
+		self._waypoints[self._num_waypoints].drop	   	= False
+		self._num_waypoints+=1
+		self.returning_home = False
 
 	def vehicle_state_callback(self, msg):
 		# print 'Vehicle State Callback'
@@ -183,6 +214,7 @@ class path_manager_base:
 			self._num_waypoints = 0
 			self.index_a = 1
 			self.state = 1
+			self.returning_home = True
 
 			new_wp = self.waypoint_temp()
 			self._waypoints.append(new_wp)
@@ -475,7 +507,11 @@ class path_manager_base:
 
 				self.state = 1
 				if (self.index_a == (self._num_waypoints - 1)):
-					self.index_a = 0
+					if self.returning_home:
+						self.return_to_home()
+						self.index_a += 1
+					else:
+						self.index_a = 0
 				else:
 					self.index_a += 1
 		# print 'c'
