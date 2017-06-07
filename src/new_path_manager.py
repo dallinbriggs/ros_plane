@@ -594,10 +594,11 @@ class path_manager_base:
 			ang = atan2(ce.item(1) - cs.item(1), ce.item(0) - cs.item(0))
 			ang2 = ang - np.pi/2 + asin((2 * R) / l)
 			q1 = np.matmul(self.rotz(ang2 + np.pi/2), e1)
-			print "L2"
-			print q1
+			# print "L2"
+			# print q1
 			z1 = cs + R * np.matmul(self.rotz(ang2), e1)
 			z2 = ce + R * np.matmul(self.rotz(ang2 + np.pi), e1)
+			q1 = (z2 - z1) / np.linalg.norm(z2 - z1)
 
 		elif min(lengths) == L3:
 			cs = cls
@@ -608,10 +609,11 @@ class path_manager_base:
 			ang = atan2(ce.item(1) - cs.item(1), ce.item(0) - cs.item(0))
 			ang2 = acos((2 * R) / l)
 			q1 = np.matmul(self.rotz(ang + ang2 - np.pi/2), e1)
-			print "L3"
-			print q1
+			# print "L3"
+			# print q1
 			z1 = cs + R * np.matmul(self.rotz(ang + ang2), e1)
 			z2 = ce + R * np.matmul(self.rotz(ang + ang2 -np.pi), e1)
+			q1 = (z2 - z1) / np.linalg.norm(z2 - z1)
 
 		# elif min(lengths) == L4:
 		else:
@@ -620,10 +622,11 @@ class path_manager_base:
 			ce = cle
 			lam_e = -1
 			q1 = (ce - cs) / np.linalg.norm(ce - cs)
-			print "L4"
-			print q1
+			# print "L4"
+			# print q1
 			z1 = cs + R * np.matmul(self.rotz(np.pi/2), q1)
 			z2 = ce + R * np.matmul(self.rotz(np.pi/2), q1)
+			q1 = (z2 - z1) / np.linalg.norm(z2 - z1)
 
 		z3 = pe
 		q3 = np.matmul(self.rotz(chi_e), e1)
