@@ -584,6 +584,8 @@ class path_manager_base:
 			z1 = cs + R * np.matmul(self.rotz(-np.pi/2), q1)
 			z2 = ce + R * np.matmul(self.rotz(-np.pi/2), q1)
 			q1 = (z2 - z1) / np.linalg.norm(z2 - z1)
+			z1[2] = cs[2]
+			z2[2] = ce[2]
 
 		elif min(lengths) == L2:
 			cs = crs
@@ -599,6 +601,8 @@ class path_manager_base:
 			z1 = cs + R * np.matmul(self.rotz(ang2), e1)
 			z2 = ce + R * np.matmul(self.rotz(ang2 + np.pi), e1)
 			q1 = (z2 - z1) / np.linalg.norm(z2 - z1)
+			z1[2] = cs[2]
+			z2[2] = ce[2]
 
 		elif min(lengths) == L3:
 			cs = cls
@@ -614,6 +618,8 @@ class path_manager_base:
 			z1 = cs + R * np.matmul(self.rotz(ang + ang2), e1)
 			z2 = ce + R * np.matmul(self.rotz(ang + ang2 -np.pi), e1)
 			q1 = (z2 - z1) / np.linalg.norm(z2 - z1)
+			z1[2] = cs[2]
+			z2[2] = ce[2]
 
 		# elif min(lengths) == L4:
 		else:
@@ -627,6 +633,8 @@ class path_manager_base:
 			z1 = cs + R * np.matmul(self.rotz(np.pi/2), q1)
 			z2 = ce + R * np.matmul(self.rotz(np.pi/2), q1)
 			q1 = (z2 - z1) / np.linalg.norm(z2 - z1)
+			z1[2] = cs[2]
+			z2[2] = ce[2]
 
 		z3 = pe
 		q3 = np.matmul(self.rotz(chi_e), e1)
