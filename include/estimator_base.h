@@ -19,7 +19,7 @@
 #include <math.h>
 #include <Eigen/Eigen>
 
-#define EARTH_RADIUS 6378145.0f
+#define EARTH_RADIUS 6370027.0f
 
 namespace rosplane {
 
