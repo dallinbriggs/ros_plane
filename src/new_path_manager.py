@@ -43,7 +43,7 @@ class path_manager_base:
 
 		# Init Params
 		self.params = self.params_s()
-		self.params.R_min = rospy.get_param('R_min', 75.0)
+		self.params.R_min = rospy.get_param('R_min', 50.0)
 
 		# inititlialize subscribers
 		self._vehicle_state_sub = rospy.Subscriber('state', State, self.vehicle_state_callback)
@@ -69,7 +69,7 @@ class path_manager_base:
 		self._dubins_mark = self.dubin_state()
 		self._dub_state = self._dubins_mark.First #self.dubin_state.First # = 'First' #'First', 'Before_H1', 'Before_H1_wrong_side', 'Straight', 'Before_H3', 'Before_H3_wrong_side'
 		self.state = 1
-		self.start_up = True
+		self.start_up = False
 		# Member objects
 		# self._dubinspath = self.dubinspath_s()
 		self._dubinspath = Dubin()
@@ -142,10 +142,10 @@ class path_manager_base:
 		self._aux_cmd_pub.publish(aux_cmd)
 
 		# # This is to close the bomb drop again
-		# rospy.sleep(0.5)
-		# aux_cmd.type_array = [0, 0, 0, 0, 0, 0, 1, 0]
-		# aux_cmd.values = [0, 0, 0, 0, 0, 0, -1, 0]
-		# self._aux_cmd_pub.publish(aux_cmd)
+		rospy.sleep(0.5)
+		aux_cmd.type_array = [0, 0, 0, 0, 0, 0, 1, 0]
+		aux_cmd.values = [0, 0, 0, 0, 0, 0, -0.9, 0]
+		self._aux_cmd_pub.publish(aux_cmd)
 		rospy.logwarn("Bottle Dropped")
 
 	def DROPnow_callback(self, msg):
@@ -322,7 +322,7 @@ class path_manager_base:
 			output.c[2] = -60
 			output.rho = self.params.R_min
 			output.lambda_ = 1
-			rospy.logwarn('ERROR: less than 2 waypoints!!!')
+			rospy.logwarn_throttle(1, 'ERROR: less than 2 waypoints!!!')
 		elif self.index_a == 0: # If finished waypoints, orbit around home CHANGE THIS TO AROUND CURRENT POSITION
 			output.flag = False
 			output.Va_d = 15
@@ -337,7 +337,7 @@ class path_manager_base:
 			output.c[2] = -60
 			output.rho = self.params.R_min
 			output.lambda_ = 1
-			rospy.logwarn('Waiting for new waypoints....')
+			rospy.logwarn_throttle(0.5, 'Waiting for new waypoints....')
 		elif (self.start_up and self._num_waypoints >= 3) or (self._waypoints[self.index_a].land) or (dist < 2*self.params.R_min):
 			# If good to go at takeoff OR headed to landing point OR Distance between waypoints < 2R
 			output = self.manage_line(params, inpt, output)
