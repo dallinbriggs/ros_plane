@@ -35,7 +35,7 @@
 
  <node name="failsafe_checker" pkg="ros_plane" type="failsafe.py" output="screen"/>
 
- <node name="record" pkg="rosbag" type="record" args="--all -o $(arg name)" output="screen"/>
+<!-- <node name="record" pkg="rosbag" type="record" args="-all -o $(arg name)" output="screen"/> -->
  <!-- GPS -->
 
  <node name="gps_driver" pkg="rosflight_utils" type="gps">

@@ -118,36 +118,36 @@ class drop_plan:
 		t = []
 		x = 0.0
 		while x <= t_fall:     #discretize t from t = 0 to t = t_fall
-		    t.append(x)
-		    x += dt
+			t.append(x)
+			x += dt
 		#Calculate North component of airspeed and ground speed as a function of time for THE BOTTLE.
 		Va_n = []
 		Vg_n = []
 		for i in range(0,len(t)):
-		    time = t[i]
-		    Va_n.append(Va0_n*(math.exp(-k_x*time/m)))
-		    Vg_n.append(Va_n[i] +Vwind_n)
+			time = t[i]
+			Va_n.append(Va0_n*(math.exp(-k_x*time/m)))
+			Vg_n.append(Va_n[i] +Vwind_n)
 		#Calculate East component of airspeed as a function of time
 		Va_e = []
 		Vg_e = []
 		for i in range(0,len(t)):
-		    time = t[i]
-		    Va_e.append(Va0_e*(math.exp(-k_x*time/m)))
-		    Vg_e.append(Va_e[i] + Vwind_e)
+			time = t[i]
+			Va_e.append(Va0_e*(math.exp(-k_x*time/m)))
+			Vg_e.append(Va_e[i] + Vwind_e)
 		#Calculate the distance the bottle travels in the north direction
 		#initialize x
 		x = [0]
 		north_final=0
 		for i in range(0,len(t)-1):
-		    x.append(x[i] + ((Vg_n[i] + Vg_n[i+1])/2)*dt)
-		    north_final = north_final + ((Vg_n[i] + Vg_n[i+1])/2)*dt
+			x.append(x[i] + ((Vg_n[i] + Vg_n[i+1])/2)*dt)
+			north_final = north_final + ((Vg_n[i] + Vg_n[i+1])/2)*dt
 		#Calculate the distance the bottle travels in the east direction
 		#initialize y
 		y = [0]
 		east_final = 0
 		for i in range(0,len(t)-1):
-		    y.append(y[i] + ((Vg_e[i] + Vg_e[i+1])/2)*dt)
-		    east_final = east_final + ((Vg_e[i] + Vg_e[i+1])/2)*dt
+			y.append(y[i] + ((Vg_e[i] + Vg_e[i+1])/2)*dt)
+			east_final = east_final + ((Vg_e[i] + Vg_e[i+1])/2)*dt
 		#Calculate the drop-point relative north and east components
 		target = [0,0,0]        #place the target at the home position [n,e,d] = [0,0,0]
 		drop_pos_n = target[0] - north_final
@@ -190,10 +190,12 @@ class drop_plan:
 		# print(north,east,down)
 		# print(waypoint1,waypoint2)
 
+		fudge = 25.0
+
 		# Setup drop waypoint
 		drop = Waypoint()
-		drop.w[0] = self.north
-		drop.w[1] = self.east
+		drop.w[0] = self.north - fudge*math.cos(self.angle)
+		drop.w[1] = self.east - fudge*math.sin(self.angle)
 		drop.w[2] = self.down
 		drop.chi_d = self.angle
 		drop.Va_d = 15.0
@@ -205,10 +207,10 @@ class drop_plan:
 
 		# Setup approach 1
 		approach1 = Waypoint()
-		approach1.w[0] = north3
-		approach1.w[1] = east3
+		approach1.w[0] = north1 + 120*math.sin(self.angle)
+		approach1.w[1] = east1 + 120*math.cos(self.angle)
 		approach1.w[2] = self.down
-		approach1.chi_d = self.angle
+		approach1.chi_d = self.angle + math.pi
 		approach1.Va_d = 15.0
 		approach1.chi_valid = True # True
 		approach1.set_current = False
@@ -231,8 +233,8 @@ class drop_plan:
 
 		# after drop
 		aftdrop = Waypoint()
-		aftdrop.w[0] = north2
-		aftdrop.w[1] = east2
+		aftdrop.w[0] = north2 - fudge*math.cos(self.angle)
+		aftdrop.w[1] = east2 - fudge*math.sin(self.angle)
 		aftdrop.w[2] = self.down
 		aftdrop.chi_d = self.angle
 		aftdrop.Va_d = 15.0
@@ -246,7 +248,7 @@ class drop_plan:
 		# print land.Va_d, approach1.Va_d, approach3.Va_d
 
 		rospy.sleep(0.5)
-	    # Loop through each waypoint
+		# Loop through each waypoint
 		for wp in waypoints:
 
 			# Publish the Waypoint
@@ -262,7 +264,7 @@ if __name__ == '__main__':
 
 	# Just run the publisher once
 	# def __init__(self, lat, lon, angle, wind_n, wind_e):
-	dropper = drop_plan(38.144602, -76.427556, 180.0, 1.0, 0.0)
+	dropper = drop_plan(40.174923, -111.652466, 0.0, -2.0, -2.0)
 
 	try:
 		rospy.spin()
