@@ -24,7 +24,7 @@ class drop_plan:
 		Vwind_e = wind_e
 
 		self.angle = angle  #Course angle (in degrees)
-		self.alt = 120.0          #desired altitude in feet
+		self.alt = 150.0          #desired altitude in feet
 
 		self.init_lat = 0.0
 		self.init_lon = 0.0
