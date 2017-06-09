@@ -183,7 +183,7 @@ class path_manager_base:
 		new_wp = self.waypoint_temp()
 		self._waypoints.append(new_wp)
 		self._waypoints[self._num_waypoints].w0      	= 0.0
-		self._waypoints[self._num_waypoints].w1      	= 0.0
+		self._waypoints[self._num_waypoints].w1      	= -self.params.R_min
 		self._waypoints[self._num_waypoints].w2      	= -60
 		self._waypoints[self._num_waypoints].chi_d     	= 0.0
 		self._waypoints[self._num_waypoints].chi_valid 	= True
@@ -785,7 +785,12 @@ class path_manager_base:
 				rospy.logwarn("Bottle Dropping")
 
 			if (self.index_a == (self._num_waypoints - 1)):
-				self.index_a = 0
+				#self.index_a = 0
+				if self.returning_home:
+					self.return_to_home()
+					self.index_a += 1
+				else:
+					self.index_a = 0
 			else:
 				self.index_a += 1
 
