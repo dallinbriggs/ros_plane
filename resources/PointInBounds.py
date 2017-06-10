@@ -3,7 +3,9 @@
 import numpy as np
 from math import *
 import rospy
+from std_msgs.msg import String
 from PointInPolygon import *
+import json
 
 
 class inBounds:
@@ -11,8 +13,8 @@ class inBounds:
     def __init__(self):
         self.bound_file = "boundaries.txt"
 
-        self.init_lat = 38.
-        self.init_lon = -76.
+        self.init_lat = 38.144614
+        self.init_lon = -76.427506
 
         self.EARTH_RADIUS = 6370027.0
 
@@ -36,6 +38,109 @@ class inBounds:
         ans = pointInPolygon(p, self.bounds)
         return ans
 
+class Obstacle:
+    def __init__(self, lat, lon, height, radius):
+        self.lat = lat
+        self.lon = lon
+        self.height = height
+        self.radius = radius
+        self.N = 0
+        self.E = 0
+        self.H = 0
+        self.rad_m = 0
+    def __str__(self):
+        return "\nLat:" + str(self.lat) + "\nLon:" + str(self.lon) + "\nHeight:" + str(self.height) + "\nRadius:" + str(self.radius)
+
+class notInObstacle:
+
+    def __init__(self):
+        self.init_lat = 38.144614
+        self.init_lon = -76.427506
+        self.init_h = 6.378
+        self.gps_inited = True
+
+        self.EARTH_RADIUS = 6370027.0
+
+        self.inflate_rad = 10 # meters to add to radius
+
+        self.obst_sub = rospy.Subscriber('obstacles', String, self.obst_callback)
+
+        self.obstacles = []
+
+        while not self.gps_inited:
+            print "Waiting for gps init"
+
+        while len(self.obstacles) == 0:
+            rospy.logwarn_throttle(1,"waiting for obstacles")
+
+        self.obstacles_to_NED()
+        print "Obstacles Ready in NED #:", len(self.obstacles)
+
+    def obstacles_to_NED(self):
+
+        for obst in self.obstacles:
+            obst.N = self.EARTH_RADIUS*(obst.lat - self.init_lat)*np.pi/180.0;
+            obst.E = self.EARTH_RADIUS*cos(obst.lat*np.pi/180.0)*(obst.lon - self.init_lon)*np.pi/180.0;
+            obst.H = obst.height*(0.3048) - self.init_h
+            obst.rad_m = obst.radius*(0.3048)
+
+    def point_not_on_obst(self, N, E):
+        for obst in self.obstacles:
+            dist = sqrt((float(obst.N) - float(N))**2 + (float(obst.E) - float(obst.E))**2)
+            if (dist <= (obst.rad_m + self.inflate_rad)): #and (H <= obst.H + self.inflate_rad):
+                return False
+        return True
+
+    def obst_callback(self, msg):
+
+        # Read as json dictionary
+        obst_dict = eval(msg.data)
+        stat_obst = obst_dict["stationary_obstacles"]
+        # mov_obst = obst_dict["moving_obstacles"]
+
+        # Find number of stationary and moving obstacles
+        # self.num_stat_obst = len(stat_obst)
+        # self.num_mov_obst = len(mov_obst)
+
+        # Init array of obstacle info
+        # self.stationary = np.zeros([self.num_stat_obst, 4])
+        # self.moving = np.zeros([self.num_mov_obst, 4])
+
+
+        # Update arrays with ROS msg info
+        for _ in range(0, len(stat_obst)):
+            lat = stat_obst[_]["latitude"]
+            lon = stat_obst[_]["longitude"]
+            height = stat_obst[_]["cylinder_height"]
+            radius = stat_obst[_]["cylinder_radius"]
+            obst = Obstacle(lat, lon, height, radius)
+            # print lat, lon, height, radius
+            print "\nObstacle Recieved:", obst
+            # Print "Obstacle: ", _, "Recieved"
+            self.obstacles.append(obst)
+
+        self.obst_sub.unregister()
+
+        # for _ in range(0, self.num_mov_obst):
+        # 	self.moving[_][0] = mov_obst[_]["latitude"]
+        # 	self.moving[_][1] = mov_obst[_]["longitude"]
+        # 	self.moving[_][2] = mov_obst[_]["altitude_msl"]
+        # 	self.moving[_][3] = mov_obst[_]["sphere_radius"]
+
+class pointGood:
+
+    def __init__(self):
+        self.bounds_avoid = inBounds()
+        self.obst_avoid = notInObstacle()
+
+    def check_point(self, N, E):
+        if self.obst_avoid.point_not_on_obst(N, E):
+            return self.bounds_avoid.pointInBounds(N, E)
+        else:
+            return False
+
+
+
 
 
 # polygon = [Point(0,3), Point(5,3), Point(0,0)]
@@ -46,6 +151,17 @@ class inBounds:
 #
 # print ans
 
-bounders = inBounds()
-
-print bounders.pointInBounds(0,0)
+# bounders = inBounds()
+#
+# # print bounders.pointInBounds(0,0)
+# rospy.init_node('obst_Avoid')
+#
+# # obst = notInObstacle()
+# #
+# # print obst.point_not_on_obst(0, 0, -50)
+#
+# checker = pointGood()
+#
+# print checker.check_point(100, 50, 50)
+#
+# rospy.spin()
