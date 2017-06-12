@@ -1,5 +1,2 @@
-fix obstacle stuff
-add output txt file writer
-add file as arg to function
 add gps_init stuff
 move everything to a folder in ground_station
