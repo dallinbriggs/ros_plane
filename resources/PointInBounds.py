@@ -36,6 +36,8 @@ class inBounds:
     def pointInBounds(self, p_N, p_E):
         p = Point(p_N, p_E)
         ans = pointInPolygon(p, self.bounds)
+        if not ans:
+            print "Point out of Bounds"
         return ans
 
 class Obstacle:
@@ -66,15 +68,16 @@ class notInObstacle:
         self.obst_sub = rospy.Subscriber('obstacles', String, self.obst_callback)
 
         self.obstacles = []
+        self.obstacles_init = False
 
         while not self.gps_inited:
             print "Waiting for gps init"
 
-        while len(self.obstacles) == 0:
+        while not self.obstacles_init:
             rospy.logwarn_throttle(1,"waiting for obstacles")
 
         self.obstacles_to_NED()
-        print "Obstacles Ready in NED #:", len(self.obstacles)
+        print "\nObstacles Ready in NED #:", len(self.obstacles)
 
     def obstacles_to_NED(self):
 
@@ -83,17 +86,27 @@ class notInObstacle:
             obst.E = self.EARTH_RADIUS*cos(obst.lat*np.pi/180.0)*(obst.lon - self.init_lon)*np.pi/180.0;
             obst.H = obst.height*(0.3048) - self.init_h
             obst.rad_m = obst.radius*(0.3048)
+            # print "\nObstacle NED: "
+            # print "North:", obst.N
+            # print "East:", obst.E
+            # print "Rad (m):", obst.rad_m
 
     def point_not_on_obst(self, N, E):
         for obst in self.obstacles:
-            dist = sqrt((float(obst.N) - float(N))**2 + (float(obst.E) - float(obst.E))**2)
+            dist = sqrt((float(N) - float(obst.N))**2 + (float(E) - float(obst.E))**2)
             if (dist <= (obst.rad_m + self.inflate_rad)): #and (H <= obst.H + self.inflate_rad):
+                print "\nCollide with Obstacle:"
+                print "Norths:", obst.N, N
+                print "Easts:", obst.E, E
+                print "Radius", obst.rad_m
+                print "Distance", dist
                 return False
         return True
 
     def obst_callback(self, msg):
 
         # Read as json dictionary
+        self.obstacles = []
         obst_dict = eval(msg.data)
         stat_obst = obst_dict["stationary_obstacles"]
         # mov_obst = obst_dict["moving_obstacles"]
@@ -115,11 +128,12 @@ class notInObstacle:
             radius = stat_obst[_]["cylinder_radius"]
             obst = Obstacle(lat, lon, height, radius)
             # print lat, lon, height, radius
-            print "\nObstacle Recieved:", obst
+            # print "\nObstacle Recieved:", obst
             # Print "Obstacle: ", _, "Recieved"
             self.obstacles.append(obst)
 
         self.obst_sub.unregister()
+        self.obstacles_init = True
 
         # for _ in range(0, self.num_mov_obst):
         # 	self.moving[_][0] = mov_obst[_]["latitude"]

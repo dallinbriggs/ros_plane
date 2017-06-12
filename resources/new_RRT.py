@@ -20,7 +20,7 @@ class RRT(object):
     def __init__(self, wpp_start, wpp_end):
 
         # self.map = area_map
-        self.map_shape = 1500
+        self.map_shape = 3000 # 1500 in each way (-1500 to 1500) N and E
         self.start_node = rrtNode(0, None, wpp_start)
         self.end_node = rrtNode(0, None, wpp_end)
         self.nodes = set()
@@ -33,17 +33,25 @@ class RRT(object):
         self.checker = pointGood()
 
     def find_path(self):
+        # print "find_path"
+        # print "\n start:", self.start_node.pos[0], self.start_node.pos[1], self.start_node.chi
+        # print "\n End:", self.end_node.pos[0], self.end_node.pos[1], self.end_node.chi
+        # print "Valid Start to End?:", self.check_dubins_path(self.start_node,self.end_node)
 
         if np.linalg.norm(self.end_node.pos-self.start_node.pos)<5*self.R_min and self.check_dubins_path(self.start_node,self.end_node):
+            print "ERROR? WHATS THIS?"
             return [self.convertToFloats(self.start_node), self.convertToFloats(self.end_node)]
 
         iterations = 0
 
-        while self.num_valid_paths < 5:
+        while self.num_valid_paths < 10: # find 10 paths before looking for shortest
+            # print "try"
             valid_flag = True
             # pick a random point
             x = random.random() * self.map_shape - self.map_shape / 2
             y = random.random() * self.map_shape - self.map_shape / 2
+            # print "\nx:", x
+            # print "\ny:", y
 
             # find the nearest node
             nearest = None
@@ -52,26 +60,31 @@ class RRT(object):
 
             for node in self.nodes:
                 dist, ang = node.dist_to(x, y)
-                if dist < nearest_dist and dist > 3*self.R_min:
+                if dist < nearest_dist and dist > 2*self.R_min:
                     nearest_dist = dist
                     nearest = node
                     chi = ang
 
             if nearest is None:
+                # print "no nearest"
                 continue
 
             dist_e, ang_e = self.end_node.dist_to(x,y)
+            # print "distance to end: ", dist_e
 
-            if dist_e < 3*self.R_min:
+            if dist_e < 2*self.R_min:
+                # print "dist to end < 2 R"
                 continue
 
             # take a step in the right direction
-            if dist > 3.2*self.R_min:
-                x_test = nearest.pos.item(0) + cos(chi) * 3.2*self.R_min
-                y_test = nearest.pos.item(1) + sin(chi) * 3.2*self.R_min
+            if dist > 2.2*self.R_min:
+                x_test = nearest.pos.item(0) + cos(chi) * 2.2*self.R_min
+                y_test = nearest.pos.item(1) + sin(chi) * 2.2*self.R_min
             else:
                 x_test = x
                 y_test = y
+            # print dist
+            # print x_test, y_test
             # rospy.logwarn(dist)
             # rospy.logwarn(x)
             # rospy.logwarn(y)
@@ -81,15 +94,21 @@ class RRT(object):
             # rospy.logwarn(y_test)
             pos_test = np.array([[x_test], [y_test], self.path_elevation])
             nearest_dist, chi = nearest.dist_to(x_test,y_test)
+            # print "nearest_dist", nearest_dist
             new_node = rrtNode(nearest.cost + nearest_dist, nearest, [pos_test,chi,nearest.Va])
 
             # get the dubins path between the two
+            # print "valid to end?", self.check_dubins_path(new_node, self.end_node)
             valid_flag = self.check_dubins_path(nearest, new_node)
+            # print "\n Nearest:", nearest.pos[0], nearest.pos[1]
+            # print "\n new_node:", new_node.pos[0], new_node.pos[1]
+            # print valid_flag
 
             # if valid point add a new node
             if valid_flag:
                 # add the point to valid nodes stack
                 self.nodes.add(new_node)
+                # print "#valid nodes =:", len(self.nodes)
                 #------------GOOD TO HERE-----------
                 # add the path to the map
 
@@ -97,6 +116,9 @@ class RRT(object):
                 # dubinsParameters(ps, chi_s, pe, chi_e)
                 # check if path to end is valid
                 to_end_valid = self.check_dubins_path(new_node, self.end_node)
+                # print "\n Nearest:", nearest.pos[0], nearest.pos[1], nearest.chi
+                # print "\n new_node:", new_node.pos[0], new_node.pos[1], new_node.chi
+                # print "\n end_node", self.end_node.pos[0], self.end_node.pos[1], self.end_node.chi
                 # if valid add end node
                 if to_end_valid:
                     dist_end, ang_end = new_node.dist_to(self.end_node.pos.item(0), self.end_node.pos.item(1))
@@ -105,6 +127,7 @@ class RRT(object):
                     self.end_nodes.add(new_end)
                     # increment count
                     self.num_valid_paths += 1
+                    print "Found valid path #:", self.num_valid_paths
         waypoints = self.find_shortest_path()
         return waypoints
 

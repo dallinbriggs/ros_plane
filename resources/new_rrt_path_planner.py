@@ -11,7 +11,7 @@ from PointInBounds import *
 
 # num_waypoints = 6
 
-def publishwaypoints():
+def publishwaypoints(wp_file):
 
 	# Init ROS Node
 	rospy.init_node('new_rrt_path_plan', anonymous=True)
@@ -22,7 +22,7 @@ def publishwaypoints():
 
 	EARTH_RADIUS = 6370027.0
 
-	wp_file = ('example_wps.txt')
+	# wp_file = ('example_wps.txt')
 
 	NED_waypoints=[]
 
@@ -38,15 +38,15 @@ def publishwaypoints():
 			N = EARTH_RADIUS*(lat - init_lat)*np.pi/180.0;
 			E = EARTH_RADIUS*cos(lat*np.pi/180.0)*(lon - init_lon)*np.pi/180.0;
 			D = -1*(alt*0.3048 - init_alt)
-			NED_waypoints.append([N,E,D])
+			NED_waypoints.append([N,E,D, chi])
 
 	print "\n\n", NED_waypoints
 
 	# List of waypoints from file
-	wp1 = [500, -200, -60, 0.0]
-	wp2 = [200, 200, -60, 1.2]
-
-	NED_waypoints = [wp1, wp2]
+	# wp1 = [0, 0, -60, 0.0]
+	# wp2 = [500, -100, -60, 1.2]
+	#
+	# NED_waypoints = [wp1, wp2]
 	checker = pointGood()
 
 	wps_to_add = []
@@ -65,7 +65,16 @@ def publishwaypoints():
 				break
 
 		if not valid_path:
-			print "Collision on index: ", i
+			print "\nCollision on index: ", i
+
+			# Check end point is not causing collision
+			good_start = checker.check_point(NED_waypoints[i][0],NED_waypoints[i][1])
+			print "\nStart point good? ", good_start
+			good_end = checker.check_point(NED_waypoints[i+1][0],NED_waypoints[i+1][1])
+			print "End point good? ", good_end
+			if (not good_end) or (not good_start):
+				rospy.logwarn_throttle(1, "Start or end waypoint collides with Obst or Bounds")
+				break
 
 			wpp_pos = np.array([[NED_waypoints[i][0],NED_waypoints[i][1],NED_waypoints[i][2]]]).T
 			wpp_start = [wpp_pos, NED_waypoints[i][3], 15.0]
@@ -100,7 +109,7 @@ def publishwaypoints():
 	for i in range(0,len(wps_to_add)):
 		index = wps_to_add[i][0]
 		wps = wps_to_add[i][1]
-		print len(wps)
+		# print len(wps)
 		for j in range(len(wps)-1,-1,-1):
 			# print "for:",j
 			NED_waypoints.insert(index+1,wps[j])
@@ -111,36 +120,25 @@ def publishwaypoints():
 	# num_rrt_wps = len(wps_rrt)/5
 	# Loop through each waypoint
 	print"\n\n",NED_waypoints
-	for i in range(0,num_rrt_wps):
 
-		# Make waypoint a Waypoint msg
-		new_waypoint = Waypoint()
+	new_file = "rrt_" + wp_file
 
-		new_waypoint.w[0] = wps_rrt[i*5 + 0]
-		new_waypoint.w[1] = wps_rrt[i*5 + 1]
-		new_waypoint.w[2] = wps_rrt[i*5 + 2]
-		new_waypoint.chi_d = wps_rrt[i*5 + 3]
-
-		new_waypoint.chi_valid = True # True
-		new_waypoint.set_current = False
-		new_waypoint.Va_d = wps_rrt[i*5 + 4]
-		new_waypoint.reset = False
-		new_waypoint.land = False
-		new_waypoint.drop = False
-		new_
-
-		# Publish the Waypoint
-		waypointPublisher.publish(new_waypoint)
-		rospy.logwarn('waypoint published')
-
-		# Sleep
-		d = rospy.Duration(0.5)
-		rospy.sleep(d)
+	with open(new_file,"w+") as f:
+		for wp in NED_waypoints:
+			new_lat = init_lat + (wp[0]*180.0)/(np.pi*EARTH_RADIUS)
+			new_lon = init_lon + (wp[1]*180.0)/(EARTH_RADIUS*np.pi*cos(init_lat*np.pi/180.0))
+			new_alt = (init_alt - wp[2])*3.28084 #ft MSL
+			f.write(str(new_lat)+" ")
+			f.write(str(new_lon)+" ")
+			f.write(str(new_alt)+" ")
+			f.write(str(wp[3])+"\n") # chi
 
 
 if __name__ == '__main__':
 	# Just run the publisher once
+	wp_file = ('example_wps.txt')
+
 	try:
-		publishwaypoints()
+		publishwaypoints(wp_file)
 	except rospy.ROSInterruptException:
 		pass
