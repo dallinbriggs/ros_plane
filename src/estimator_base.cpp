@@ -38,6 +38,7 @@ void estimator_base::update(const ros::TimerEvent&)
     input_.gps_new = false;
 
     rosflight_msgs::State msg;
+    msg.header.stamp = imu_timestamp_;
     msg.position[0] = output.pn;
     msg.position[1] = output.pe;
     msg.position[2] = -output.h;
@@ -112,6 +113,7 @@ void estimator_base::gpsCallback(const inertial_sense::GPS &msg)
 
 void estimator_base::imuCallback(const sensor_msgs::Imu &msg)
 {
+    imu_timestamp_ = msg.header.stamp;
     input_.accel_x = msg.linear_acceleration.x;
     input_.accel_y = msg.linear_acceleration.y;
     input_.accel_z = msg.linear_acceleration.z;

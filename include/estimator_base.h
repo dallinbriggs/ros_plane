@@ -114,6 +114,7 @@ private:
 
     struct params_s                 params_;
     struct input_s                  input_;
+    ros::Time                       imu_timestamp_;
 };
 } //end namespace
 
