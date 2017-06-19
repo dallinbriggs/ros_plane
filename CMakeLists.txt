@@ -19,6 +19,7 @@ add_message_files(
   Waypoint.msg
   Controller_Internals.msg
   Dubin.msg
+  State.msg
 )
 
 generate_messages(
