@@ -26,8 +26,8 @@ estimator_base::estimator_base():
     baro_sub_ = nh_.subscribe(baro_topic_, 10, &estimator_base::baroAltCallback, this);
     airspeed_sub_ = nh_.subscribe(airspeed_topic_, 10, &estimator_base::airspeedCallback, this);
     update_timer_ = nh_.createTimer(ros::Duration(1.0/update_rate_), &estimator_base::update, this);
-    vehicle_state_pub_ = nh_.advertise<rosflight_msgs::State>("state",10);
-    gps_state_pub_ = nh_.advertise<rosflight_msgs::State>("gps_state",10);
+    vehicle_state_pub_ = nh_.advertise<ros_plane::State>("state",10);
+    gps_state_pub_ = nh_.advertise<ros_plane::State>("gps_state",10);
     gps_init_pub_ = nh_.advertise<std_msgs::Float32MultiArray>("gps_init",10);
 }
 
@@ -37,7 +37,7 @@ void estimator_base::update(const ros::TimerEvent&)
     estimate(params_, input_, output);
     input_.gps_new = false;
 
-    rosflight_msgs::State msg;
+    ros_plane::State msg;
     msg.header.stamp = imu_timestamp_;
     msg.position[0] = output.pn;
     msg.position[1] = output.pe;

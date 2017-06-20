@@ -10,7 +10,7 @@
 #define ESTIMATOR_BASE_H
 
 #include <ros/ros.h>
-#include <rosflight_msgs/State.h>
+#include <ros_plane/State.h>
 #include <inertial_sense/GPS.h>
 #include <sensor_msgs/Imu.h>
 #include <rosflight_msgs/Barometer.h>
