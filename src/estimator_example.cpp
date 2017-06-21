@@ -133,7 +133,11 @@ void estimator_example::estimate(const params_s &params, const input_s &input, o
 
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
     if((lpf_accel_x>2.0) && hhat<5.0){
+=======
+    if(((sqrt(powf(lpf_accel_x,2)+powf(lpf_accel_y,2)+powf(lpf_accel_z,2))/9.8066)>2.5) && hhat<5.0){
+>>>>>>> parent of 8ed6c42... trying to fix takeoff
         ROS_WARN("NOT USING ACCELS!");
     }
     else{
