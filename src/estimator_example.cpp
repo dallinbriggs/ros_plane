@@ -132,10 +132,14 @@ void estimator_example::estimate(const params_s &params, const input_s &input, o
     I = Eigen::Matrix2f::Identity();
 
 <<<<<<< HEAD
+<<<<<<< HEAD
     if((lpf_accel_x>2.0) && hhat<5.0){
         ROS_WARN("NOT USING ACCELS!");
     }
     else{
+=======
+    if(((sqrt(powf(lpf_accel_x,2)+powf(lpf_accel_y,2)+powf(lpf_accel_z,2))/9.8066)<2.5)|hhat>5.0){
+>>>>>>> parent of 9c54d17... added warning message for no accels
         // x-axis accelerometer
         h_a = qhat*Vahat*st + params.gravity*st;
         C_a = Eigen::Vector2f::Zero();
@@ -162,6 +166,7 @@ void estimator_example::estimate(const params_s &params, const input_s &input, o
         P_a = (I - L_a*C_a.transpose())*P_a;
         xhat_a += L_a *(lpf_accel_z - h_a);//input.accel_z - h_a);
     }
+<<<<<<< HEAD
 =======
     // x-axis accelerometer
     h_a = qhat*Vahat*st + params.gravity*st;
@@ -189,6 +194,9 @@ void estimator_example::estimate(const params_s &params, const input_s &input, o
     P_a = (I - L_a*C_a.transpose())*P_a;
     xhat_a += L_a *(lpf_accel_z - h_a);//input.accel_z - h_a);
 >>>>>>> parent of ca93a1c... change to estimator to not use accels in takeoff
+=======
+    
+>>>>>>> parent of 9c54d17... added warning message for no accels
 
     check_xhat_a();
 
