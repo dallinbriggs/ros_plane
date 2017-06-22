@@ -2,10 +2,7 @@ cmake_minimum_required(VERSION 2.8.3)
 project(ros_plane)
 
 find_package(catkin REQUIRED COMPONENTS
-<<<<<<< HEAD
-=======
   rosflight_utils
->>>>>>> 4f0546a2829595930f73d823507e35113bd9931d
   rosflight_msgs
   roscpp
   rospy
@@ -56,11 +53,7 @@ generate_dynamic_reconfigure_options(
 catkin_package(
   INCLUDE_DIRS include
 #  LIBRARIES
-<<<<<<< HEAD
-  CATKIN_DEPENDS rosflight_msgs roscpp rospy
-=======
   CATKIN_DEPENDS rosflight_utils rosflight_msgs roscpp rospy
->>>>>>> 4f0546a2829595930f73d823507e35113bd9931d
 #  DEPENDS system_lib
 )
 add_definitions(-std=c++11)

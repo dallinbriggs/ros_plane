@@ -92,11 +92,7 @@ private:
     ros::Subscriber airspeed_sub_;
 
     void update(const ros::TimerEvent &);
-<<<<<<< HEAD
     void gpsCallback(const inertial_sense::GPS &msg);
-=======
-    void gpsCallback(const rosflight_msgs::GPS &msg);
->>>>>>> 4f0546a2829595930f73d823507e35113bd9931d
     void imuCallback(const sensor_msgs::Imu &msg);
     void baroAltCallback(const rosflight_msgs::Barometer &msg);
     void airspeedCallback(const rosflight_msgs::Airspeed &msg);
