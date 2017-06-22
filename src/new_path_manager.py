@@ -43,18 +43,21 @@ class path_manager_base:
 
 		# Init Params
 		self.params = self.params_s()
-		self.params.R_min = rospy.get_param('R_min', 75.0)
+		self.params.R_min = rospy.get_param('R_min', 50.0)
 
 		# inititlialize subscribers
 		self._vehicle_state_sub = rospy.Subscriber('state', State, self.vehicle_state_callback)
 		self._new_waypoint_sub = rospy.Subscriber('waypoint_path', Waypoint, self.new_waypoint_callback)
 		self._RTH_sub = rospy.Subscriber('RTH', Bool, self.RTH_callback)
+		self._bomb_sub = rospy.Subscriber('bomb_drop', Bool, self.drop_callback)
+		self._bomb_now_sub = rospy.Subscriber('DROP_now', Bool, self.DROPnow_callback)
 
 		# Init Publishers
 		self._current_path_pub = rospy.Publisher('current_path', Current_Path, queue_size=10)
 		self._current_wp_pub = rospy.Publisher('current_waypoint', Waypoint, queue_size=10)
 		self._current_dub_pub = rospy.Publisher('dubin_params', Dubin, queue_size=10)
 		self._wp_error_pub = rospy.Publisher('waypoint_error', Float32, queue_size=1)
+		self._aux_cmd_pub = rospy.Publisher('aux_command', AuxCommand, queue_size=1)
 
 		self.index_a = 1 #waypoint 0 should be initial position, waypoint 1 where you want to start flying to
 
@@ -66,13 +69,17 @@ class path_manager_base:
 		self._dubins_mark = self.dubin_state()
 		self._dub_state = self._dubins_mark.First #self.dubin_state.First # = 'First' #'First', 'Before_H1', 'Before_H1_wrong_side', 'Straight', 'Before_H3', 'Before_H3_wrong_side'
 		self.state = 1
-		self.start_up = True
+		self.start_up = False
 		# Member objects
 		# self._dubinspath = self.dubinspath_s()
 		self._dubinspath = Dubin()
 
 		self._waypoints = []
 		self.RTH = False # RETURN TO HOME COMMAND
+
+		self.drop_safe = False
+
+		self.returning_home = True
 
 		# run waypoint init to initialize with waypoints found in waypoint_init (alternative to path_planner.py)
 		# self.waypoint_init()
@@ -130,10 +137,61 @@ class path_manager_base:
 
 
 	# Class Member Functions
+	def drop_bottle(self):
+		aux_cmd = AuxCommand()
+		aux_cmd.type_array = [0, 0, 0, 0, 0, 0, 1, 0]
+		aux_cmd.values = [0, 0, 0, 0, 0, 0, 1, 0]
+		self._aux_cmd_pub.publish(aux_cmd)
+
+		# # This is to close the bomb drop again
+		rospy.sleep(0.5)
+		aux_cmd.type_array = [0, 0, 0, 0, 0, 0, 1, 0]
+		aux_cmd.values = [0, 0, 0, 0, 0, 0, -0.9, 0]
+		self._aux_cmd_pub.publish(aux_cmd)
+		rospy.logwarn("Bottle Dropped")
+
+	def DROPnow_callback(self, msg):
+		if msg.data == True:
+			self.drop_bottle()
+
+	def drop_callback(self, msg):
+		self.drop_safe = msg.data
+		if self.drop_safe == True:
+			rospy.logwarn("Ready to Drop")
+
 	def RTH_callback(self, msg):
-		self.RTH = msg.data
+		# self.RTH = msg.data
 		if self.RTH:
 			rospy.logwarn("RETURN TO HOME!!!!!!!!!!")
+			self.state = 1
+			self.index_a += 1
+			self.return_to_home()
+
+	def return_to_home(self):
+		new_wp = self.waypoint_temp()
+		self._waypoints.append(new_wp)
+		self._waypoints[self._num_waypoints].w0      = self._vehicle_state.position[0]
+		self._waypoints[self._num_waypoints].w1      = self._vehicle_state.position[1]
+		self._waypoints[self._num_waypoints].w2      = self._vehicle_state.position[2]
+		self._waypoints[self._num_waypoints].chi_d     = self._vehicle_state.chi
+		self._waypoints[self._num_waypoints].chi_valid = True
+		self._waypoints[self._num_waypoints].Va_d      = self._vehicle_state.Va
+		self._waypoints[self._num_waypoints].land	   = False
+		self._waypoints[self._num_waypoints].drop	   = False
+		self._num_waypoints+=1
+
+		new_wp = self.waypoint_temp()
+		self._waypoints.append(new_wp)
+		self._waypoints[self._num_waypoints].w0      	= 0.0
+		self._waypoints[self._num_waypoints].w1      	= -self.params.R_min
+		self._waypoints[self._num_waypoints].w2      	= -60
+		self._waypoints[self._num_waypoints].chi_d     	= 0.0
+		self._waypoints[self._num_waypoints].chi_valid 	= True
+		self._waypoints[self._num_waypoints].Va_d      	= 15.0
+		self._waypoints[self._num_waypoints].land	   	= False
+		self._waypoints[self._num_waypoints].drop	   	= False
+		self._num_waypoints+=1
+		self.returning_home = False
 
 	def vehicle_state_callback(self, msg):
 		# print 'Vehicle State Callback'
@@ -156,6 +214,7 @@ class path_manager_base:
 			self._num_waypoints = 0
 			self.index_a = 1
 			self.state = 1
+			self.returning_home = True
 
 			new_wp = self.waypoint_temp()
 			self._waypoints.append(new_wp)
@@ -166,6 +225,7 @@ class path_manager_base:
 			self._waypoints[self._num_waypoints].chi_valid = True
 			self._waypoints[self._num_waypoints].Va_d      = self._vehicle_state.Va
 			self._waypoints[self._num_waypoints].land	   = False
+			self._waypoints[self._num_waypoints].drop	   = False
 			self._num_waypoints+=1
 
 			new_wp = self.waypoint_temp()
@@ -177,6 +237,7 @@ class path_manager_base:
 			self._waypoints[self._num_waypoints].chi_valid = msg.chi_valid
 			self._waypoints[self._num_waypoints].Va_d      = msg.Va_d
 			self._waypoints[self._num_waypoints].land	   = msg.land
+			self._waypoints[self._num_waypoints].drop	   = msg.drop
 			self._num_waypoints+=1
 
 		# add new waypoint to self._waypoint array or waypoints
@@ -190,6 +251,7 @@ class path_manager_base:
 			self._waypoints[self._num_waypoints].chi_valid = msg.chi_valid
 			self._waypoints[self._num_waypoints].Va_d      = msg.Va_d
 			self._waypoints[self._num_waypoints].land	   = msg.land
+			self._waypoints[self._num_waypoints].drop	   = msg.drop
 			self._num_waypoints+=1
 			print "Number of Waypoints: ", self._num_waypoints
 		elif msg.set_current:
@@ -203,6 +265,7 @@ class path_manager_base:
 			new_wp.chi_valid = True
 			new_wp.Va_d = self._vehicle_state.Va
 			new_wp.land = False
+			new_wp.drop = False
 			self._num_waypoints+=1
 			self._waypoints.insert(self.index_a-1, new_wp)
 
@@ -214,6 +277,7 @@ class path_manager_base:
 			new_wp.chi_valid = msg.chi_valid
 			new_wp.Va_d = msg.Va_d
 			new_wp.land = msg.land
+			new_wp.drop = msg.drop
 			self._num_waypoints+=1
 			self._waypoints.insert(self.index_a, new_wp)
 
@@ -290,7 +354,7 @@ class path_manager_base:
 			output.c[2] = -60
 			output.rho = self.params.R_min
 			output.lambda_ = 1
-			rospy.logwarn('ERROR: less than 2 waypoints!!!')
+			rospy.logwarn_throttle(1, 'ERROR: less than 2 waypoints!!!')
 		elif self.index_a == 0: # If finished waypoints, orbit around home CHANGE THIS TO AROUND CURRENT POSITION
 			output.flag = False
 			output.Va_d = 15
@@ -305,7 +369,7 @@ class path_manager_base:
 			output.c[2] = -60
 			output.rho = self.params.R_min
 			output.lambda_ = 1
-			rospy.logwarn('Waiting for new waypoints....')
+			rospy.logwarn_throttle(0.5, 'Waiting for new waypoints....')
 		elif (self.start_up and self._num_waypoints >= 3) or (self._waypoints[self.index_a].land) or (dist < 2*self.params.R_min):
 			# If good to go at takeoff OR headed to landing point OR Distance between waypoints < 2R
 			output = self.manage_line(params, inpt, output)
@@ -443,7 +507,11 @@ class path_manager_base:
 
 				self.state = 1
 				if (self.index_a == (self._num_waypoints - 1)):
-					self.index_a = 0
+					if self.returning_home:
+						self.return_to_home()
+						self.index_a += 1
+					else:
+						self.index_a = 0
 				else:
 					self.index_a += 1
 		# print 'c'
@@ -552,6 +620,8 @@ class path_manager_base:
 			z1 = cs + R * np.matmul(self.rotz(-np.pi/2), q1)
 			z2 = ce + R * np.matmul(self.rotz(-np.pi/2), q1)
 			q1 = (z2 - z1) / np.linalg.norm(z2 - z1)
+			z1[2] = cs[2]
+			z2[2] = ce[2]
 
 		elif min(lengths) == L2:
 			cs = crs
@@ -562,10 +632,13 @@ class path_manager_base:
 			ang = atan2(ce.item(1) - cs.item(1), ce.item(0) - cs.item(0))
 			ang2 = ang - np.pi/2 + asin((2 * R) / l)
 			q1 = np.matmul(self.rotz(ang2 + np.pi/2), e1)
-			print "L2"
-			print q1
+			# print "L2"
+			# print q1
 			z1 = cs + R * np.matmul(self.rotz(ang2), e1)
 			z2 = ce + R * np.matmul(self.rotz(ang2 + np.pi), e1)
+			q1 = (z2 - z1) / np.linalg.norm(z2 - z1)
+			z1[2] = cs[2]
+			z2[2] = ce[2]
 
 		elif min(lengths) == L3:
 			cs = cls
@@ -576,10 +649,13 @@ class path_manager_base:
 			ang = atan2(ce.item(1) - cs.item(1), ce.item(0) - cs.item(0))
 			ang2 = acos((2 * R) / l)
 			q1 = np.matmul(self.rotz(ang + ang2 - np.pi/2), e1)
-			print "L3"
-			print q1
+			# print "L3"
+			# print q1
 			z1 = cs + R * np.matmul(self.rotz(ang + ang2), e1)
 			z2 = ce + R * np.matmul(self.rotz(ang + ang2 -np.pi), e1)
+			q1 = (z2 - z1) / np.linalg.norm(z2 - z1)
+			z1[2] = cs[2]
+			z2[2] = ce[2]
 
 		# elif min(lengths) == L4:
 		else:
@@ -588,10 +664,13 @@ class path_manager_base:
 			ce = cle
 			lam_e = -1
 			q1 = (ce - cs) / np.linalg.norm(ce - cs)
-			print "L4"
-			print q1
+			# print "L4"
+			# print q1
 			z1 = cs + R * np.matmul(self.rotz(np.pi/2), q1)
 			z2 = ce + R * np.matmul(self.rotz(np.pi/2), q1)
+			q1 = (z2 - z1) / np.linalg.norm(z2 - z1)
+			z1[2] = cs[2]
+			z2[2] = ce[2]
 
 		z3 = pe
 		q3 = np.matmul(self.rotz(chi_e), e1)
@@ -701,8 +780,17 @@ class path_manager_base:
 			self._wp_error_pub.publish(error)
 			self.start_up = False
 
+			if (b.drop == True) and (self.drop_safe == True):
+				self.drop_bottle()
+				rospy.logwarn("Bottle Dropping")
+
 			if (self.index_a == (self._num_waypoints - 1)):
-				self.index_a = 0
+				#self.index_a = 0
+				if self.returning_home:
+					self.return_to_home()
+					self.index_a += 1
+				else:
+					self.index_a = 0
 			else:
 				self.index_a += 1
 

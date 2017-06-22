@@ -7,7 +7,9 @@ namespace rosplane {
     nh_(ros::NodeHandle()),
     nh_private_(ros::NodeHandle("~"))
   {
+
     _vehicle_state_sub = nh_.subscribe<ros_plane::State>("state", 1, &path_follower_base::vehicle_state_callback, this);
+
     _current_path_sub = nh_.subscribe<ros_plane::Current_Path>("current_path",1, &path_follower_base::current_path_callback, this);
 
 

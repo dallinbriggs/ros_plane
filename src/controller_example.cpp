@@ -26,7 +26,7 @@ void controller_example::control(const params_s &params, const input_s &input, o
         output.phi_c = 0;
         output.delta_a = roll_hold(0.0, input.phi, input.p, params, input.Ts);
         output.delta_t = params.max_t;
-        output.theta_c = 15*3.14/180;
+        output.theta_c = 30*3.14/180;
         if(input.h >= params.alt_toz) {
 //            ROS_INFO("climb");
             current_zone = alt_zones::Climb;
@@ -127,6 +127,9 @@ void controller_example::control(const params_s &params, const input_s &input, o
 
     output.current_zone = current_zone;
     output.delta_e = pitch_hold(output.theta_c, input.theta, input.q, params, input.Ts);
+    if((input.h < 5.0) && (current_zone == alt_zones::TakeOff)) {
+        	output.delta_e = 0.1;
+        }
 }
 
 float controller_example::course_hold(float chi_c, float chi, float phi_ff, float r, const params_s &params, float Ts)

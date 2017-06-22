@@ -2,6 +2,10 @@ cmake_minimum_required(VERSION 2.8.3)
 project(ros_plane)
 
 find_package(catkin REQUIRED COMPONENTS
+<<<<<<< HEAD
+=======
+  rosflight_utils
+>>>>>>> 4f0546a2829595930f73d823507e35113bd9931d
   rosflight_msgs
   roscpp
   rospy
@@ -10,7 +14,7 @@ find_package(catkin REQUIRED COMPONENTS
   sensor_msgs
   message_generation
 )
-find_package(Eigen REQUIRED)
+find_package(Eigen3 REQUIRED)
 
 add_message_files(
   FILES
@@ -52,7 +56,11 @@ generate_dynamic_reconfigure_options(
 catkin_package(
   INCLUDE_DIRS include
 #  LIBRARIES
+<<<<<<< HEAD
   CATKIN_DEPENDS rosflight_msgs roscpp rospy
+=======
+  CATKIN_DEPENDS rosflight_utils rosflight_msgs roscpp rospy
+>>>>>>> 4f0546a2829595930f73d823507e35113bd9931d
 #  DEPENDS system_lib
 )
 add_definitions(-std=c++11)
@@ -60,7 +68,7 @@ add_definitions(-std=c++11)
 include_directories(include)
 include_directories(
   ${catkin_INCLUDE_DIRS}
-  ${EIGEN_INCLUDE_DIRS}
+  ${EIGEN3_INCLUDE_DIRS}
 )
 
 ## Declare a C++ executable
