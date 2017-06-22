@@ -10,22 +10,30 @@
 #define CONTROLLER_BASE_H
 
 #include <ros/ros.h>
-#include <fcu_common/FW_State.h>
-#include <fcu_common/FW_Controller_Commands.h>
-#include <fcu_common/Command.h>
-#include <fcu_common/FW_Attitude_Commands.h>
+#include <rosflight_msgs/Command.h>
+#include <ros_plane/State.h>
+#include <ros_plane/Controller_Commands.h>
+#include <ros_plane/Controller_Internals.h>
+#include <std_msgs/Bool.h>
 
 #include <dynamic_reconfigure/server.h>
 #include <ros_plane/ControllerConfig.h>
 
 namespace rosplane {
 
+enum class alt_zones {
+    TakeOff,
+    Climb,
+    Descend,
+    AltitudeHold,
+    Land
+};
+
 class controller_base
 {
 public:
     controller_base();
     float spin();
-    virtual int getstate() = 0;
 
 protected:
 
@@ -42,6 +50,8 @@ protected:
         float Va_c;             /** commanded airspeed (m/s) */
         float h_c;              /** commanded altitude (m) */
         float chi_c;            /** commanded course (rad) */
+        float phi_ff;           /** feed forward term for orbits (rad) */
+        bool land;
     };
 
     struct output_s{
@@ -51,6 +61,7 @@ protected:
         float delta_a;
         float delta_r;
         float delta_t;
+        alt_zones current_zone;
     };
 
     struct params_s {
@@ -99,16 +110,19 @@ private:
     ros::NodeHandle nh_private_;
     ros::Subscriber _vehicle_state_sub;
     ros::Subscriber _controller_commands_sub;
+    ros::Subscriber _terminate_flight_sub;
     ros::Publisher _actuators_pub;
-    ros::Publisher _att_cmd_pub;
+    ros::Publisher _internals_pub;
     ros::Timer _act_pub_timer;
 
     struct params_s                    _params;            /**< params */
-    fcu_common::FW_Controller_Commands _controller_commands;
-    fcu_common::FW_State _vehicle_state;
+    ros_plane::Controller_Commands _controller_commands;
+    ros_plane::State _vehicle_state;
+    std_msgs::Bool _terminate;
 
-    void vehicle_state_callback(const fcu_common::FW_StateConstPtr& msg);
-    void controller_commands_callback(const fcu_common::FW_Controller_CommandsConstPtr& msg);
+    void vehicle_state_callback(const ros_plane::StateConstPtr& msg);
+    void controller_commands_callback(const ros_plane::Controller_CommandsConstPtr& msg);
+    void terminate_flight_callback(const std_msgs::BoolConstPtr& msg);
     bool _command_recieved;
 
     dynamic_reconfigure::Server<ros_plane::ControllerConfig> _server;

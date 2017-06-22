@@ -10,11 +10,12 @@
 #define ESTIMATOR_BASE_H
 
 #include <ros/ros.h>
-#include <fcu_common/FW_State.h>
-#include <fcu_common/GPS.h>
+#include <ros_plane/State.h>
+#include <inertial_sense/GPS.h>
 #include <sensor_msgs/Imu.h>
-#include <std_msgs/Float32.h>
-#include <sensor_msgs/FluidPressure.h>
+#include <rosflight_msgs/Barometer.h>
+#include <rosflight_msgs/Airspeed.h>
+#include <std_msgs/Float32MultiArray.h>
 #include <math.h>
 #include <Eigen/Eigen>
 
@@ -83,16 +84,18 @@ private:
     ros::NodeHandle nh_;
     ros::NodeHandle nh_private_;
     ros::Publisher vehicle_state_pub_;
+    ros::Publisher gps_state_pub_;
+    ros::Publisher gps_init_pub_;
     ros::Subscriber gps_sub_;
     ros::Subscriber imu_sub_;
     ros::Subscriber baro_sub_;
     ros::Subscriber airspeed_sub_;
 
     void update(const ros::TimerEvent &);
-    void gpsCallback(const fcu_common::GPS &msg);
+    void gpsCallback(const inertial_sense::GPS &msg);
     void imuCallback(const sensor_msgs::Imu &msg);
-    void baroAltCallback(const std_msgs::Float32 &msg);
-    void airspeedCallback(const sensor_msgs::FluidPressure &msg);
+    void baroAltCallback(const rosflight_msgs::Barometer &msg);
+    void airspeedCallback(const rosflight_msgs::Airspeed &msg);
 
     double update_rate_;
     ros::Timer update_timer_;
@@ -111,6 +114,7 @@ private:
 
     struct params_s                 params_;
     struct input_s                  input_;
+    ros::Time                       imu_timestamp_;
 };
 } //end namespace
 

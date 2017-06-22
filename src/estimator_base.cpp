@@ -7,10 +7,11 @@ estimator_base::estimator_base():
     nh_(ros::NodeHandle()),
     nh_private_(ros::NodeHandle("~"))
 {
-    nh_private_.param<std::string>("gps_topic", gps_topic_, "/gps/data");
-    nh_private_.param<std::string>("imu_topic", imu_topic_, "/imu/data");
-    nh_private_.param<std::string>("baro_topic", baro_topic_, "/baro/alt");
-    nh_private_.param<std::string>("airspeed_topic", airspeed_topic_, "/airspeed/data");
+
+    nh_private_.param<std::string>("gps_topic", gps_topic_, "gps/data");
+    nh_private_.param<std::string>("imu_topic", imu_topic_, "imu/data");
+    nh_private_.param<std::string>("baro_topic", baro_topic_, "baro");
+    nh_private_.param<std::string>("airspeed_topic", airspeed_topic_, "airspeed");
     nh_private_.param<double>("update_rate", update_rate_, 100.0);
     params_.Ts = 1.0f/update_rate_;
     params_.gravity = 9.8;
@@ -26,7 +27,9 @@ estimator_base::estimator_base():
     baro_sub_ = nh_.subscribe(baro_topic_, 10, &estimator_base::baroAltCallback, this);
     airspeed_sub_ = nh_.subscribe(airspeed_topic_, 10, &estimator_base::airspeedCallback, this);
     update_timer_ = nh_.createTimer(ros::Duration(1.0/update_rate_), &estimator_base::update, this);
-    vehicle_state_pub_ = nh_.advertise<fcu_common::FW_State>("state",10);
+    vehicle_state_pub_ = nh_.advertise<ros_plane::State>("state",10);
+    gps_state_pub_ = nh_.advertise<ros_plane::State>("gps_state",10);
+    gps_init_pub_ = nh_.advertise<std_msgs::Float32MultiArray>("gps_init",10);
 }
 
 void estimator_base::update(const ros::TimerEvent&)
@@ -35,7 +38,8 @@ void estimator_base::update(const ros::TimerEvent&)
     estimate(params_, input_, output);
     input_.gps_new = false;
 
-    fcu_common::FW_State msg;
+    ros_plane::State msg;
+    msg.header.stamp = imu_timestamp_;
     msg.position[0] = output.pn;
     msg.position[1] = output.pe;
     msg.position[2] = -output.h;
@@ -54,11 +58,31 @@ void estimator_base::update(const ros::TimerEvent&)
     msg.we = output.we;
     msg.quat_valid = false;
 
+    msg.psi_deg = fmod(output.psi,2*M_PI)*180/M_PI; //-360 to 360
+    msg.psi_deg += (msg.psi_deg < -180 ? 360 : 0); msg.psi_deg -= (msg.psi_deg > 180 ? 360 : 0);
+    msg.chi_deg = fmod(output.chi,2*M_PI)*180/M_PI; //-360 to 360
+    msg.chi_deg += (msg.chi_deg < -180 ? 360 : 0); msg.chi_deg -= (msg.chi_deg > 180 ? 360 : 0);
+
     vehicle_state_pub_.publish(msg);
+
+    if (gps_init_)
+	{
+	   msg.position[0] = init_lat_ + (output.pn*180.0)/(M_PI*EARTH_RADIUS);
+	   msg.position[1] = init_lon_ + (output.pe*180.0)/(EARTH_RADIUS*M_PI*cos(init_lat_*M_PI/180.0));
+	   msg.position[2] = (init_alt_ + output.h)*3.28084; //ft MSL
+       msg.Va = output.Va*1.94384;// KIAS
+
+	   gps_state_pub_.publish(msg);
+	}
 }
 
-void estimator_base::gpsCallback(const fcu_common::GPS &msg)
+void estimator_base::gpsCallback(const inertial_sense::GPS &msg)
 {
+    if((msg.fix_type & inertial_sense::GPS::GPS_STATUS_FIX_TYPE_3D_FIX) != inertial_sense::GPS::GPS_STATUS_FIX_TYPE_3D_FIX || msg.num_sat < 4 || !std::isfinite(msg.latitude))
+    {
+        input_.gps_new = false;
+        return;
+    }
     if(!gps_init_)
     {
         gps_init_ = true;
@@ -71,16 +95,26 @@ void estimator_base::gpsCallback(const fcu_common::GPS &msg)
         input_.gps_n = EARTH_RADIUS*(msg.latitude - init_lat_)*M_PI/180.0;
         input_.gps_e = EARTH_RADIUS*cos(init_lat_*M_PI/180.0)*(msg.longitude - init_lon_)*M_PI/180.0;
         input_.gps_h = msg.altitude - init_alt_;
-        input_.gps_Vg = msg.speed;
-        if(msg.speed > 0.3)
-            input_.gps_course = msg.ground_course;
-        if(msg.fix == true && msg.NumSat >= 4)
-            input_.gps_new = true;
+        input_.gps_Vg = msg.ground_speed_2d;
+        if(msg.ground_speed_2d > 0.3)
+            input_.gps_course = msg.course;
+        input_.gps_new = true;
+
+       std_msgs::Float32MultiArray msg;
+       msg.data.clear();
+       msg.data.push_back(init_lat_);
+       msg.data.push_back(init_lon_);
+       msg.data.push_back(6.7056); // 22 ft MSL in meters (competition altitude)
+       // msg.data[1] = init_lon_;
+       // msg.data[2] = init_alt_;
+
+       gps_init_pub_.publish(msg);
     }
 }
 
 void estimator_base::imuCallback(const sensor_msgs::Imu &msg)
 {
+    imu_timestamp_ = msg.header.stamp;
     input_.accel_x = msg.linear_acceleration.x;
     input_.accel_y = msg.linear_acceleration.y;
     input_.accel_z = msg.linear_acceleration.z;
@@ -90,14 +124,17 @@ void estimator_base::imuCallback(const sensor_msgs::Imu &msg)
     input_.gyro_z = msg.angular_velocity.z;
 }
 
-void estimator_base::baroAltCallback(const std_msgs::Float32 &msg)
+void estimator_base::baroAltCallback(const rosflight_msgs::Barometer &msg)
 {
-    input_.baro_alt = msg.data;
+    input_.baro_alt = -msg.altitude;
 }
 
-void estimator_base::airspeedCallback(const sensor_msgs::FluidPressure &msg)
+void estimator_base::airspeedCallback(const rosflight_msgs::Airspeed &msg)
 {
-    input_.diff_pres = msg.fluid_pressure;
+    if (msg.differential_pressure > 0.0)
+    {
+      input_.diff_pres = msg.differential_pressure;
+    }
 }
 
 } //end namespace

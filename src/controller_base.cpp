@@ -9,9 +9,11 @@ controller_base::controller_base():
 {
     _vehicle_state_sub = nh_.subscribe("state", 10, &controller_base::vehicle_state_callback, this);
     _controller_commands_sub = nh_.subscribe("controller_commands", 10, &controller_base::controller_commands_callback, this);
+    _terminate_flight_sub = nh_.subscribe("terminate_flight", 10, &controller_base::terminate_flight_callback, this);
 
     memset(&_vehicle_state, 0, sizeof(_vehicle_state));
     memset(&_controller_commands, 0, sizeof(_controller_commands));
+    memset(&_terminate, 0, sizeof(_terminate));
 
     nh_private_.param<double>("TRIM_E", _params.trim_e, 0.0);
     nh_private_.param<double>("TRIM_A", _params.trim_a, 0.0);
@@ -20,7 +22,7 @@ controller_base::controller_base():
     nh_private_.param<double>("PWM_RAD_E", _params.pwm_rad_e, 2.3);
     nh_private_.param<double>("PWM_RAD_A", _params.pwm_rad_a, -1.6);
     nh_private_.param<double>("PWM_RAD_R", _params.pwm_rad_r, 1.0);
-    nh_private_.param<double>("ALT_TOZ", _params.alt_toz, 20.0);
+    nh_private_.param<double>("ALT_TOZ", _params.alt_toz, 30.0);
     nh_private_.param<double>("ALT_HZ", _params.alt_hz, 10.0);
     nh_private_.param<double>("TAU", _params.tau, 5.0);
     nh_private_.param<double>("COURSE_KP", _params.c_kp, 0.7329);
@@ -53,22 +55,27 @@ controller_base::controller_base():
     _func = boost::bind(&controller_base::reconfigure_callback, this, _1, _2);
     _server.setCallback(_func);
 
-    _actuators_pub = nh_.advertise<fcu_common::Command>("command",10);
-    _att_cmd_pub = nh_.advertise<fcu_common::FW_Attitude_Commands>("attitude_commands",10);
+    _actuators_pub = nh_.advertise<rosflight_msgs::Command>("command",10);
+    _internals_pub = nh_.advertise<ros_plane::Controller_Internals>("controller_inners",10);
     _act_pub_timer = nh_.createTimer(ros::Duration(1.0/100.0), &controller_base::actuator_controls_publish, this);
 
     _command_recieved = false;
 }
 
-void controller_base::vehicle_state_callback(const fcu_common::FW_StateConstPtr& msg)
+void controller_base::vehicle_state_callback(const ros_plane::StateConstPtr& msg)
 {
     _vehicle_state = *msg;
 }
 
-void controller_base::controller_commands_callback(const fcu_common::FW_Controller_CommandsConstPtr& msg)
+void controller_base::controller_commands_callback(const ros_plane::Controller_CommandsConstPtr& msg)
 {
     _command_recieved = true;
     _controller_commands = *msg;
+}
+
+void controller_base::terminate_flight_callback(const std_msgs::BoolConstPtr& msg)
+{
+    _terminate = *msg;
 }
 
 void controller_base::reconfigure_callback(ros_plane::ControllerConfig &config, uint32_t level)
@@ -129,6 +136,8 @@ void controller_base::actuator_controls_publish(const ros::TimerEvent&)
     input.Va_c = _controller_commands.Va_c;
     input.h_c = _controller_commands.h_c;
     input.chi_c = _controller_commands.chi_c;
+    input.phi_ff = _controller_commands.phi_ff;
+    input.land = _controller_commands.land;
     input.Ts = 0.01f;
 
     struct output_s output;
@@ -138,22 +147,52 @@ void controller_base::actuator_controls_publish(const ros::TimerEvent&)
 
         convert_to_pwm(output);
 
-        fcu_common::Command actuators;
+        rosflight_msgs::Command actuators;
         /* publish actuator controls */
 
-        actuators.normalized_roll = output.delta_a;//(isfinite(output.delta_a)) ? output.delta_a : 0.0f;
-        actuators.normalized_pitch = output.delta_e;//(isfinite(output.delta_e)) ? output.delta_e : 0.0f;
-        actuators.normalized_yaw = output.delta_r;//(isfinite(output.delta_r)) ? output.delta_r : 0.0f;
-        actuators.normalized_throttle = output.delta_t;//(isfinite(output.delta_t)) ? output.delta_t : 0.0f;
+        actuators.ignore = 0;
+        actuators.mode = rosflight_msgs::Command::MODE_PASS_THROUGH;
+
+        if(_terminate.data == true){
+          ROS_WARN_STREAM("WARNING TERMINATING FLIGHT");
+          actuators.x = _params.max_a;
+          actuators.y = _params.max_e;
+          actuators.z = _params.max_r;
+          actuators.F = 0.0;
+        }
+        else{
+          actuators.x = output.delta_a;//(isfinite(output.delta_a)) ? output.delta_a : 0.0f;
+          actuators.y = output.delta_e;//(isfinite(output.delta_e)) ? output.delta_e : 0.0f;
+          actuators.z = output.delta_r;//(isfinite(output.delta_r)) ? output.delta_r : 0.0f;
+          actuators.F = output.delta_t;//(isfinite(output.delta_t)) ? output.delta_t : 0.0f;
+        }
 
         _actuators_pub.publish(actuators);
 
-        if(_att_cmd_pub.getNumSubscribers() > 0)
+        if(_internals_pub.getNumSubscribers() > 0)
         {
-            fcu_common::FW_Attitude_Commands attitudes;
-            attitudes.phi_c = output.phi_c;
-            attitudes.theta_c = output.theta_c;
-            _att_cmd_pub.publish(attitudes);
+            ros_plane::Controller_Internals inners;
+            inners.phi_c = output.phi_c;
+            inners.theta_c = output.theta_c;
+            switch(output.current_zone)
+            {
+                case alt_zones::TakeOff:
+                    inners.alt_zone = inners.ZONE_TAKE_OFF;
+                    break;
+                case alt_zones::Climb:
+                    inners.alt_zone = inners.ZONE_CLIMB;
+                    break;
+                case alt_zones::Descend:
+                    inners.alt_zone = inners.ZONE_DESEND;
+                    break;
+                case alt_zones::AltitudeHold:
+                    inners.alt_zone = inners.ZONE_ALTITUDE_HOLD;
+                    break;
+                case alt_zones::Land:
+                    inners.alt_zone = inners.ZONE_LAND;
+            }
+            inners.aux_valid = false;
+            _internals_pub.publish(inners);
         }
     }
 }
