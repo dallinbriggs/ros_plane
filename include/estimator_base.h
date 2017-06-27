@@ -39,6 +39,7 @@ protected:
         float accel_y;
         float accel_z;
         float baro_alt;
+        float static_pres;
         float diff_pres;
         bool gps_new;
         float gps_n;

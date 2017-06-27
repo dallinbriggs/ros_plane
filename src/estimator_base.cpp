@@ -127,6 +127,7 @@ void estimator_base::imuCallback(const sensor_msgs::Imu &msg)
 void estimator_base::baroAltCallback(const rosflight_msgs::Barometer &msg)
 {
     input_.baro_alt = -msg.altitude;
+    input_.static_pres = -msg.pressure;
 }
 
 void estimator_base::airspeedCallback(const rosflight_msgs::Airspeed &msg)

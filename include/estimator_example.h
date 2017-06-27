@@ -27,16 +27,20 @@ private:
     double lpf_a_;
     float alpha;
     float alpha1;
+    float alpha2;
     int N_;
 
     float lpf_gyro_x;
     float lpf_gyro_y;
     float lpf_gyro_z;
-//    float lpf_static;
+    float lpf_static;
     float lpf_diff;
+    float lpf_hhat;
     float lpf_accel_x;
     float lpf_accel_y;
     float lpf_accel_z;
+
+    float baro_alt;
 
     float phat;
     float qhat;
