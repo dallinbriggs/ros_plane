@@ -67,7 +67,7 @@ void estimator_example::estimate(const params_s &params, const input_s &input, o
 
         float lpf_a = 50;
         float lpf_a1 = 2.0;
-        float lpf_a2 = 10;
+        float lpf_a2 = 2;
         alpha = exp(-lpf_a*params.Ts);
         alpha1 = exp(-lpf_a1*params.Ts);
         alpha2 = exp(-lpf_a2*params.Ts);
