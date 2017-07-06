@@ -67,7 +67,7 @@ void estimator_example::estimate(const params_s &params, const input_s &input, o
 
         float lpf_a = 50;
         float lpf_a1 = 2.0;
-        float lpf_a2 = 2;
+        float lpf_a2 = 10;
         alpha = exp(-lpf_a*params.Ts);
         alpha1 = exp(-lpf_a1*params.Ts);
         alpha2 = exp(-lpf_a2*params.Ts);
@@ -325,6 +325,22 @@ void estimator_example::estimate(const params_s &params, const input_s &input, o
     {
         //xhat_p(3) = fmodf(xhat_p(3),2*M_PI);
         xhat_p(6) = fmodf(xhat_p(6),2*M_PI);
+    }
+
+    xhat_p(3) = fmodf(xhat_p(3), 2*M_PI);
+    if(xhat_p(3) > M_PI) {
+      xhat_p(3) -= 2.0*M_PI;
+    }
+    else if (xhat_p(3) < -M_PI) {
+      xhat_p(3) += 2.0*M_PI;
+    }
+
+    xhat_p(6) = fmodf(xhat_p(6), 2*M_PI);
+    if(xhat_p(6) > M_PI) {
+      xhat_p(6) -= 2.0*M_PI;
+    }
+    else if (xhat_p(6) < -M_PI) {
+      xhat_p(6) += 2.0*M_PI;
     }
 
     float pnhat = xhat_p(0);
